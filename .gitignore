@@ -1,0 +1,7 @@
+*.pyc
+*.pkg
+pkg_content
+.DS_Store
+dist
+*.egg-info
+.idea/
