@@ -6,6 +6,8 @@ This **Robopost Client** library provides convenient Python methods to:
 - **Upload Media** (images or videos)
 - **Create Scheduled Posts** (including drafts and recurring posts)
 
+> **Note:** All date/time fields must be provided in **UTC**.
+
 ---
 
 ## Installation
@@ -56,36 +58,23 @@ Use these channel IDs in the `channel_ids` list when creating scheduled posts.
 
 All scheduled times must be in UTC. Build a payload using the `PublicAPIScheduledPostCreateHTTPPayload` Pydantic model, then pass that payload to `create_scheduled_posts`.
 
-When setting `is_recur=True`, you **must** also provide a valid `recur_interval`. The available options are:
+**Important:** The `schedule_at` field is now required (with a default of the current UTC time).  
+Additionally, when setting `is_recur=True`, you **must** also pass a valid `recur_interval`.
 
-- `AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS`
-- `AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS`
-- `AutomationRecurInterval.EVERY_3_HOURS`
-- `AutomationRecurInterval.EVERY_6_HOURS`
-- `AutomationRecurInterval.BI_DAILY`
-- `AutomationRecurInterval.DAILY`
-- `AutomationRecurInterval.WEEKLY`
-- `AutomationRecurInterval.MONTHLY`
-- `AutomationRecurInterval.YEARLY`
-
-> **Note:** All date/time fields must be provided in **UTC**.
-
-Below are a few common scenarios, including how to upload media and then use the resulting `storage_object_id`.
+Below are a few common scenarios:
 
 ---
 
 #### A. Create a Post to Be Scheduled **Now**
 
+*(This example uses the default value for `schedule_at`, which is the current UTC datetime.)*
+
 ```python
-from datetime import datetime, timezone
 from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
-
-utc_now = datetime.now(timezone.utc).isoformat()
-
+# No need to explicitly set schedule_at if posting now since it defaults to datetime.now()
 payload_now = PublicAPIScheduledPostCreateHTTPPayload(
     text="Posting now via Robopost!",
     channel_ids=["channel_123"],  # Replace with your channel ID
-    schedule_at=utc_now,          # Schedules as soon as possible (UTC)
     is_draft=False
 )
 
@@ -95,9 +84,32 @@ print("Scheduled Immediately:", scheduled_post_now)
 
 ---
 
-#### B. Create a **Recurring** Post with a Specific Interval
+#### B. Create a Post to Be Scheduled **Later**
 
-Here, we set `is_recur=True` and pass `recur_interval`. The example below uses the DAILY interval. You can substitute any of the options listed above.
+*(Explicitly set `schedule_at` to a future UTC datetime.)*
+
+```python
+from datetime import datetime, timedelta, timezone
+from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
+
+# Schedule for 2 hours later in UTC
+future_time = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+payload_later = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Scheduled for later via Robopost!",
+    channel_ids=["channel_123"],  # Replace with your channel ID
+    schedule_at=future_time,
+    is_draft=False
+)
+
+scheduled_post_later = client.create_scheduled_posts(payload_later)
+print("Scheduled for Later:", scheduled_post_later)
+```
+
+---
+
+#### C. Create a **Recurring** Post
+
+When using recurring posts, set `is_recur=True` and **provide** a valid `recur_interval`. In the example below, we use a DAILY interval.
 
 ```python
 from datetime import datetime, timezone
@@ -118,7 +130,7 @@ print("Recurring Posts:", scheduled_posts_recur)
 
 ---
 
-#### C. Create a Post With **3 Images**
+#### D. Create a Post With **3 Images**
 
 **Step 1: Upload the images (one by one) and collect their `storage_object_id`.**
 
@@ -141,9 +153,9 @@ payload_with_images = PublicAPIScheduledPostCreateHTTPPayload(
     text="Check out these 3 images!",
     channel_ids=["channel_123"],  # Replace with your channel ID
     image_object_ids=[
-        media_1.storage_object_id,
-        media_2.storage_object_id,
-        media_3.storage_object_id,
+        {"id": media_1.storage_object_id},
+        {"id": media_2.storage_object_id},
+        {"id": media_3.storage_object_id},
     ],
     is_draft=False
 )
@@ -154,7 +166,7 @@ print("Post with Images:", scheduled_posts_images)
 
 ---
 
-#### D. Create a Post With **1 Video**
+#### E. Create a Post With **1 Video**
 
 **Step 1: Upload a video and retrieve its `storage_object_id`.**
 
@@ -171,7 +183,7 @@ from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
 payload_with_video = PublicAPIScheduledPostCreateHTTPPayload(
     text="Here's a demo video!",
     channel_ids=["channel_123"],       # Replace with your channel ID
-    video_object_id=video_media.storage_object_id,
+    video_object_id={"id": video_media.storage_object_id},
     is_draft=False
 )
 

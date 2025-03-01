@@ -1,6 +1,5 @@
-# robopost_client.py
-
 import os
+import uuid
 import requests
 from enum import Enum
 from typing import List, Optional
@@ -9,7 +8,7 @@ from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------
-# Enums (Existing + New for AutomationRecurInterval)
+# Enums
 # ---------------------------------------------------------
 class AIImageModel(Enum):
     DALLE = "DALLE"
@@ -53,33 +52,33 @@ class AutomationRecurInterval(Enum):
 
 
 # ---------------------------------------------------------
-# Scheduled Post Models
+# Models for Scheduled Posts
 # ---------------------------------------------------------
 class PublicAPIScheduledPostCreateHTTPPayload(BaseModel):
-    text: str = ""
-    channel_ids: List[str] = []
-    image_object_ids: List[str] = []
-    video_object_id: Optional[str] = None
-    gif_object_id: Optional[str] = None
-
-    facebook_settings: Optional[dict] = None
-    instagram_settings: Optional[dict] = None
-    pinterest_settings: Optional[dict] = None
-    wordpress_settings: Optional[dict] = None
-    youtube_settings: Optional[dict] = None
-    tiktok_settings: Optional[dict] = None
-    gmb_settings: Optional[dict] = None
-
-    post_collection_id: Optional[str] = None
-    is_draft: bool = False
-    is_recur: bool = False
-    schedule_at: Optional[str] = None  # ISO datetime string (UTC)
-    recur_generate_new_ai_image: bool = False
-    recur_generate_new_ai_image_model: Optional[AIImageModel] = None
-    recur_until_dt: Optional[str] = None
-    recur_until_dt_enabled: bool = False
-    recur_rephrase_text_with_ai: bool = False
-    recur_rephrase_text_with_ai_tone: Optional[PostAIGenerateVoiceTone] = None
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
+    text: str = Field("")
+    channel_ids: List[str] = Field(..., min_items=1)
+    image_object_ids: List[dict] = Field([])
+    video_object_id: dict = Field(None)
+    gif_object_id: dict = Field(None)
+    facebook_settings: dict = Field({})
+    instagram_settings: dict = Field({})
+    pinterest_settings: dict = Field({})
+    wordpress_settings: dict = Field({})
+    youtube_settings: dict = Field({})
+    tiktok_settings: dict = Field({})
+    gmb_settings: dict = Field({})
+    is_draft: bool = Field(False)
+    post_collection_id: str = Field(None)
+    schedule_at: datetime = Field(default_factory=datetime.now)
+    is_recur: bool = Field(False)
+    recur_interval: Optional[AutomationRecurInterval] = Field(None)
+    recur_generate_new_ai_image: bool = Field(False)
+    recur_generate_new_ai_image_model: AIImageModel = Field(AIImageModel.DALLE)
+    recur_until_dt: Optional[datetime] = Field(None)
+    recur_until_dt_enabled: bool = Field(False)
+    recur_rephrase_text_with_ai: bool = Field(False)
+    recur_rephrase_text_with_ai_tone: PostAIGenerateVoiceTone = Field(PostAIGenerateVoiceTone.FRIENDLY)
 
 
 class PublicAPIScheduledPostRead(BaseModel):
@@ -98,6 +97,7 @@ class PublicAPIScheduledPostRead(BaseModel):
     gmb_settings: dict = Field({})
     is_draft: bool = Field(False)
     post_collection_id: Optional[str] = Field(None)
+    schedule_at: datetime = Field(...)
     is_recur: bool = Field(False)
     recur_interval: AutomationRecurInterval = Field(AutomationRecurInterval.DAILY)
     recur_generate_new_ai_image: bool = Field(False)
@@ -109,7 +109,7 @@ class PublicAPIScheduledPostRead(BaseModel):
 
 
 # ---------------------------------------------------------
-# Media Models
+# Media Model
 # ---------------------------------------------------------
 class PublicAPIMediaRead(BaseModel):
     id: str
