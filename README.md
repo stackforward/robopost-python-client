@@ -1,12 +1,10 @@
 # Robopost Client
 
-**Robopost** is an AI-driven social media management platform that consolidates all your social channels into one place. With over 20,000 users, it helps businesses, agencies, and freelancers automate and schedule posts, generate AI-based content, and streamline teamwork. For more information, visit [robopost.app](https://robopost.app/).
+**Robopost** is an AI-driven social media management platform that consolidates all your social channels into one place. It helps businesses, agencies, and freelancers automate and schedule posts, generate AI-based content, and streamline teamwork. For more information, visit [robopost.app](https://robopost.app/).
 
 This **Robopost Client** library provides convenient Python methods to:
 - **Upload Media** (images or videos)
 - **Create Scheduled Posts** (including drafts and recurring posts)
-
-> **Note:** All date/time fields must be provided in **UTC**.
 
 ---
 
@@ -58,7 +56,21 @@ Use these channel IDs in the `channel_ids` list when creating scheduled posts.
 
 All scheduled times must be in UTC. Build a payload using the `PublicAPIScheduledPostCreateHTTPPayload` Pydantic model, then pass that payload to `create_scheduled_posts`.
 
-Below are a few common scenarios. For each, we’ll show how to upload media first (when needed) and then use the returned `storage_object_id`.
+When setting `is_recur=True`, you **must** also provide a valid `recur_interval`. The available options are:
+
+- `AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS`
+- `AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS`
+- `AutomationRecurInterval.EVERY_3_HOURS`
+- `AutomationRecurInterval.EVERY_6_HOURS`
+- `AutomationRecurInterval.BI_DAILY`
+- `AutomationRecurInterval.DAILY`
+- `AutomationRecurInterval.WEEKLY`
+- `AutomationRecurInterval.MONTHLY`
+- `AutomationRecurInterval.YEARLY`
+
+> **Note:** All date/time fields must be provided in **UTC**.
+
+Below are a few common scenarios, including how to upload media and then use the resulting `storage_object_id`.
 
 ---
 
@@ -83,21 +95,21 @@ print("Scheduled Immediately:", scheduled_post_now)
 
 ---
 
-#### B. Create a **Recurring** Post That Repeats **DAILY**
+#### B. Create a **Recurring** Post with a Specific Interval
+
+Here, we set `is_recur=True` and pass `recur_interval`. The example below uses the DAILY interval. You can substitute any of the options listed above.
 
 ```python
 from datetime import datetime, timezone
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
+from robopost_client import PublicAPIScheduledPostCreateHTTPPayload, AutomationRecurInterval
 
 first_post_time = datetime(2025, 3, 1, 10, 0, 0, tzinfo=timezone.utc).isoformat()
 payload_recur = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Daily recurring post!",
-    channel_ids=["channel_123"],   # Replace with your channel ID
+    text="Recurring post via Robopost!",
+    channel_ids=["channel_123"],  # Replace with your channel ID
     schedule_at=first_post_time,   # First run time in UTC
-    is_recur=True,                 # Make this post recur
-    # You could optionally set an end time:
-    # recur_until_dt=datetime(2025, 12, 31, tzinfo=timezone.utc).isoformat(),
-    # recur_until_dt_enabled=True,
+    is_recur=True,                 # Enable recurrence
+    recur_interval=AutomationRecurInterval.DAILY,  # Set recurrence interval (e.g., DAILY)
 )
 
 scheduled_posts_recur = client.create_scheduled_posts(payload_recur)

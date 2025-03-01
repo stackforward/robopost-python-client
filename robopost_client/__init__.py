@@ -1,14 +1,16 @@
+# robopost_client.py
+
 import os
-import uuid
 import requests
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, Field
 
 
-# ------------------------------------------------------------------------
-# Enums (Updated with your provided values for AIImageModel & PostAIGenerateVoiceTone)
-# ------------------------------------------------------------------------
+# ---------------------------------------------------------
+# Enums (Existing + New for AutomationRecurInterval)
+# ---------------------------------------------------------
 class AIImageModel(Enum):
     DALLE = "DALLE"
     FLUX_SCHNELL = "FLUX_SCHNELL"
@@ -38,9 +40,21 @@ class PostAIGenerateVoiceTone(Enum):
     FRIENDLY = "FRIENDLY"
 
 
-# ------------------------------------------------------------------------
-# Pydantic Models for /scheduled_posts
-# ------------------------------------------------------------------------
+class AutomationRecurInterval(Enum):
+    DAILY_SPECIFIC_TIME_SLOTS = "DAILY_SPECIFIC_TIME_SLOTS"
+    WEEKLY_SPECIFIC_TIME_SLOTS = "WEEKLY_SPECIFIC_TIME_SLOTS"
+    EVERY_3_HOURS = "EVERY_3_HOURS"
+    EVERY_6_HOURS = "EVERY_6_HOURS"
+    BI_DAILY = "BI_DAILY"  # every 12 hours
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
+    YEARLY = "YEARLY"
+
+
+# ---------------------------------------------------------
+# Scheduled Post Models
+# ---------------------------------------------------------
 class PublicAPIScheduledPostCreateHTTPPayload(BaseModel):
     text: str = ""
     channel_ids: List[str] = []
@@ -59,35 +73,7 @@ class PublicAPIScheduledPostCreateHTTPPayload(BaseModel):
     post_collection_id: Optional[str] = None
     is_draft: bool = False
     is_recur: bool = False
-    schedule_at: Optional[str] = None  # ISO datetime string
-
-    recur_generate_new_ai_image: bool = False
-    recur_generate_new_ai_image_model: Optional[AIImageModel] = None
-    recur_until_dt: Optional[str] = None  # ISO datetime string
-    recur_until_dt_enabled: bool = False
-    recur_rephrase_text_with_ai: bool = False
-    recur_rephrase_text_with_ai_tone: Optional[PostAIGenerateVoiceTone] = None
-
-
-class PublicAPIScheduledPostRead(BaseModel):
-    id: str
-    text: str
-    channel_ids: List[str] = []
-    image_object_ids: List[str] = []
-    video_object_id: Optional[str] = None
-    gif_object_id: Optional[str] = None
-
-    facebook_settings: Optional[dict] = None
-    instagram_settings: Optional[dict] = None
-    pinterest_settings: Optional[dict] = None
-    wordpress_settings: Optional[dict] = None
-    youtube_settings: Optional[dict] = None
-    tiktok_settings: Optional[dict] = None
-    gmb_settings: Optional[dict] = None
-
-    is_draft: bool = False
-    post_collection_id: Optional[str] = None
-    is_recur: bool = False
+    schedule_at: Optional[str] = None  # ISO datetime string (UTC)
     recur_generate_new_ai_image: bool = False
     recur_generate_new_ai_image_model: Optional[AIImageModel] = None
     recur_until_dt: Optional[str] = None
@@ -96,9 +82,35 @@ class PublicAPIScheduledPostRead(BaseModel):
     recur_rephrase_text_with_ai_tone: Optional[PostAIGenerateVoiceTone] = None
 
 
-# ------------------------------------------------------------------------
-# Pydantic Model for /medias/upload
-# ------------------------------------------------------------------------
+class PublicAPIScheduledPostRead(BaseModel):
+    id: str = Field(...)
+    text: str = Field("")
+    channel_ids: List[str] = Field(..., min_items=1)
+    image_object_ids: List[dict] = Field([])
+    video_object_id: dict = Field(None)
+    gif_object_id: dict = Field(None)
+    facebook_settings: dict = Field({})
+    instagram_settings: dict = Field({})
+    pinterest_settings: dict = Field({})
+    wordpress_settings: dict = Field({})
+    youtube_settings: dict = Field({})
+    tiktok_settings: dict = Field({})
+    gmb_settings: dict = Field({})
+    is_draft: bool = Field(False)
+    post_collection_id: Optional[str] = Field(None)
+    is_recur: bool = Field(False)
+    recur_interval: AutomationRecurInterval = Field(AutomationRecurInterval.DAILY)
+    recur_generate_new_ai_image: bool = Field(False)
+    recur_generate_new_ai_image_model: AIImageModel = Field(AIImageModel.DALLE)
+    recur_until_dt: Optional[datetime] = Field(None)
+    recur_until_dt_enabled: bool = Field(False)
+    recur_rephrase_text_with_ai: bool = Field(False)
+    recur_rephrase_text_with_ai_tone: PostAIGenerateVoiceTone = Field(PostAIGenerateVoiceTone.FRIENDLY)
+
+
+# ---------------------------------------------------------
+# Media Models
+# ---------------------------------------------------------
 class PublicAPIMediaRead(BaseModel):
     id: str
     name: str
@@ -106,9 +118,9 @@ class PublicAPIMediaRead(BaseModel):
     storage_object_id: str
 
 
-# ------------------------------------------------------------------------
-# The RobopostClient Class
-# ------------------------------------------------------------------------
+# ---------------------------------------------------------
+# Robopost Client
+# ---------------------------------------------------------
 class RobopostClient:
     """
     A client to interact with the Robopost public API.
@@ -139,8 +151,8 @@ class RobopostClient:
         return PublicAPIMediaRead.model_validate(response.json())
 
     def create_scheduled_posts(
-            self,
-            payload: PublicAPIScheduledPostCreateHTTPPayload,
+        self,
+        payload: PublicAPIScheduledPostCreateHTTPPayload,
     ) -> List[PublicAPIScheduledPostRead]:
         """
         Calls the POST /scheduled_posts endpoint to create new scheduled posts or drafts.
