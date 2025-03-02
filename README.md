@@ -58,8 +58,12 @@ Use these channel IDs in the `channel_ids` list when creating scheduled posts.
 
 All scheduled times must be in UTC. Build a payload using the `PublicAPIScheduledPostCreateHTTPPayload` Pydantic model, then pass that payload to `create_scheduled_posts`.
 
-**Important:** The `schedule_at` field is now required (with a default of the current UTC time).  
-Additionally, when setting `is_recur=True`, you **must** also pass a valid `recur_interval`.
+**Important:**  
+- The `schedule_at` field is required (with a default of the current UTC time).  
+- When scheduling a recurring post (i.e. `is_recur=True`), you **must** also pass a valid `recur_interval` along with the recurrence fields.  
+- For recurrence using either `DAILY_SPECIFIC_TIME_SLOTS` or `WEEKLY_SPECIFIC_TIME_SLOTS`, you must fill the `recur_interval_time_slots` field with full ISO 8601 datetime strings.  
+  - When using `DAILY_SPECIFIC_TIME_SLOTS`, only the time portion will be used by the API.
+  - When using `WEEKLY_SPECIFIC_TIME_SLOTS`, both the day of the week and time are taken into account.
 
 Below are a few common scenarios:
 
@@ -107,9 +111,9 @@ print("Scheduled for Later:", scheduled_post_later)
 
 ---
 
-#### C. Create a **Recurring** Post
+#### C. Create a **Recurring** Post (Standard)
 
-When using recurring posts, set `is_recur=True` and **provide** a valid `recur_interval`. In the example below, we use a DAILY interval.
+When using recurring posts, set `is_recur=True` and provide a valid `recur_interval`. In this example, we use a standard DAILY interval.
 
 ```python
 from datetime import datetime, timezone
@@ -121,16 +125,70 @@ payload_recur = PublicAPIScheduledPostCreateHTTPPayload(
     channel_ids=["channel_123"],  # Replace with your channel ID
     schedule_at=first_post_time,   # First run time in UTC
     is_recur=True,                 # Enable recurrence
-    recur_interval=AutomationRecurInterval.DAILY,  # Set recurrence interval (e.g., DAILY)
+    recur_interval=AutomationRecurInterval.DAILY,  # Standard daily recurrence
 )
 
 scheduled_posts_recur = client.create_scheduled_posts(payload_recur)
-print("Recurring Posts:", scheduled_posts_recur)
+print("Recurring Posts (Standard):", scheduled_posts_recur)
 ```
 
 ---
 
-#### D. Create a Post With **3 Images**
+#### D. Create a **Recurring** Post Using DAILY_SPECIFIC_TIME_SLOTS
+
+When using `DAILY_SPECIFIC_TIME_SLOTS`, set `is_recur=True`, use `AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS`, and provide a list of ISO 8601 datetime strings in `recur_interval_time_slots`. Note that the API will only use the time portion.
+
+```python
+from datetime import datetime, timezone
+from robopost_client import PublicAPIScheduledPostCreateHTTPPayload, AutomationRecurInterval
+
+first_post_time = datetime(2025, 3, 1, 8, 0, 0, tzinfo=timezone.utc).isoformat()
+payload_daily_slots = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Recurring post with daily specific time slots!",
+    channel_ids=["channel_123"],  # Replace with your channel ID
+    schedule_at=first_post_time,   # First run time in UTC
+    is_recur=True,                 # Enable recurrence
+    recur_interval=AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS,
+    recur_interval_time_slots=[
+        datetime(2025, 3, 1, 9, 0, 0, tzinfo=timezone.utc).isoformat(),
+        datetime(2025, 3, 1, 15, 0, 0, tzinfo=timezone.utc).isoformat()
+    ]
+)
+
+scheduled_posts_daily = client.create_scheduled_posts(payload_daily_slots)
+print("Recurring Posts (Daily Specific Slots):", scheduled_posts_daily)
+```
+
+---
+
+#### E. Create a **Recurring** Post Using WEEKLY_SPECIFIC_TIME_SLOTS
+
+For `WEEKLY_SPECIFIC_TIME_SLOTS`, set `is_recur=True`, use `AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS`, and provide a list of ISO 8601 datetime strings in `recur_interval_time_slots`. In this case, the API considers both the day of the week and time.
+
+```python
+from datetime import datetime, timezone
+from robopost_client import PublicAPIScheduledPostCreateHTTPPayload, AutomationRecurInterval
+
+first_post_time = datetime(2025, 3, 1, 10, 0, 0, tzinfo=timezone.utc).isoformat()
+payload_weekly_slots = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Recurring post with weekly specific time slots!",
+    channel_ids=["channel_123"],  # Replace with your channel ID
+    schedule_at=first_post_time,   # First run time in UTC
+    is_recur=True,                 # Enable recurrence
+    recur_interval=AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS,
+    recur_interval_time_slots=[
+        datetime(2025, 3, 3, 10, 0, 0, tzinfo=timezone.utc).isoformat(),  # Example: Monday or Tuesday at 10:00 UTC
+        datetime(2025, 3, 5, 14, 0, 0, tzinfo=timezone.utc).isoformat()   # Example: Wednesday or Thursday at 14:00 UTC
+    ]
+)
+
+scheduled_posts_weekly = client.create_scheduled_posts(payload_weekly_slots)
+print("Recurring Posts (Weekly Specific Slots):", scheduled_posts_weekly)
+```
+
+---
+
+#### F. Create a Post With **3 Images**
 
 **Step 1: Upload the images (one by one) and collect their `storage_object_id`.**
 
@@ -153,9 +211,9 @@ payload_with_images = PublicAPIScheduledPostCreateHTTPPayload(
     text="Check out these 3 images!",
     channel_ids=["channel_123"],  # Replace with your channel ID
     image_object_ids=[
-        {"id": media_1.storage_object_id},
-        {"id": media_2.storage_object_id},
-        {"id": media_3.storage_object_id},
+        media_1.storage_object_id,
+        media_2.storage_object_id,
+        media_3.storage_object_id,
     ],
     is_draft=False
 )
@@ -166,7 +224,7 @@ print("Post with Images:", scheduled_posts_images)
 
 ---
 
-#### E. Create a Post With **1 Video**
+#### G. Create a Post With **1 Video**
 
 **Step 1: Upload a video and retrieve its `storage_object_id`.**
 
@@ -183,13 +241,244 @@ from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
 payload_with_video = PublicAPIScheduledPostCreateHTTPPayload(
     text="Here's a demo video!",
     channel_ids=["channel_123"],       # Replace with your channel ID
-    video_object_id={"id": video_media.storage_object_id},
+    video_object_id=video_media.storage_object_id,
     is_draft=False
 )
 
 scheduled_posts_video = client.create_scheduled_posts(payload_with_video)
 print("Post with Video:", scheduled_posts_video)
 ```
+
+---
+
+### 5. Specifying Social Media–Specific Settings
+
+Robopost supports additional fields that allow you to customize posts for each social media platform. These fields can be found in the following Pydantic models:
+
+- **`FacebookSettings`**  
+  - `postType` → `FacebookPostType.POST` or `FacebookPostType.REELS`  
+- **`InstagramSettings`**  
+  - `postType` → `InstagramPostType.POST`, `InstagramPostType.REELS`, or `InstagramPostType.STORIES`  
+- **`PinterestSettings`**  
+  - `pinTitle`, `destinationLink`  
+- **`WordpressSettings`**  
+  - `postTitle`, `postText`, `postSlug`, `postType`, `postCategories`, `postTags`, etc.  
+- **`YoutubeSettings`**  
+  - `videoObject`, `videoTitle`, `videoType`, `videoDescription`, `videoPrivacyStatus`, etc.  
+- **`TikTokSettings`**  
+  - `title`, `privacyLevel`, `disableDuet`, `disableComment`, etc.  
+- **`GMBSettings`**  
+  - `postTopicType` (STANDARD, OFFER, EVENT), `offerTitle`, `eventTitle`, `ctaButtonActionType`, etc.
+
+Each of these settings objects is optional. If you do not provide them, the fields default to safe values (e.g., `POST` type for Facebook and Instagram). However, if you want to post Facebook Reels or Instagram Stories, or if you need to specify additional fields for WordPress or GMB, you can do so by providing the respective settings object in your payload.
+
+#### Example: Using **Facebook Reels** and **Instagram Reels**
+
+```python
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    FacebookSettings,
+    FacebookPostType,
+    InstagramSettings,
+    InstagramPostType
+)
+
+payload_social_settings = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Testing Reels on Facebook and Instagram!",
+    channel_ids=["facebook_channel_id", "instagram_channel_id"],
+    facebook_settings=FacebookSettings(postType=FacebookPostType.REELS),
+    instagram_settings=InstagramSettings(postType=InstagramPostType.REELS),
+)
+
+scheduled_reels = client.create_scheduled_posts(payload_social_settings)
+print("Scheduled Facebook & Instagram Reels:", scheduled_reels)
+```
+
+#### Example: Adding Additional **Wordpress** Fields
+
+```python
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    WordpressSettings,
+    WordpressPostType
+)
+
+payload_wordpress = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Check out my WordPress post!",
+    channel_ids=["wordpress_channel_id"],
+    wordpress_settings=WordpressSettings(
+        postTitle="My Awesome Post",
+        postText="Detailed blog content goes here...",
+        postSlug="my-awesome-post",
+        postType=WordpressPostType.POST,
+        postCategories=["Tech", "Python"],
+        postTags=["robopost", "automation"]
+    ),
+)
+
+scheduled_wordpress = client.create_scheduled_posts(payload_wordpress)
+print("WordPress Post Scheduled:", scheduled_wordpress)
+```
+
+#### Example: Setting **YouTube** Privacy and Video Type
+
+```python
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    YoutubeSettings,
+    YoutubeVideoType,
+    YoutubePrivacyStatus
+)
+
+payload_youtube = PublicAPIScheduledPostCreateHTTPPayload(
+    text="My new YouTube short!",
+    channel_ids=["youtube_channel_id"],
+    youtube_settings=YoutubeSettings(
+        videoObject="SOME_VIDEO_OBJECT_ID",
+        videoTitle="Behind the Scenes",
+        videoType=YoutubeVideoType.SHORT,  # or VIDEO
+        videoDescription="A fun behind-the-scenes short video.",
+        videoPrivacyStatus=YoutubePrivacyStatus.UNLISTED
+    ),
+)
+
+scheduled_youtube = client.create_scheduled_posts(payload_youtube)
+print("YouTube Short Scheduled:", scheduled_youtube)
+```
+
+
+### Example: Standard GMB Post
+
+Use the `GMBPostTopicType.STANDARD` and provide any additional CTA button fields as needed.
+
+```python
+from datetime import datetime, timezone
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    GMBSettings,
+    GMBPostTopicType,
+    GMBCTAButtonActionType
+)
+
+payload_gmb_standard = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Come visit our new store location!",
+    channel_ids=["gmb_channel_id"],  # Replace with your GMB channel ID
+    gmb_settings=GMBSettings(
+        postTopicType=GMBPostTopicType.STANDARD,
+        ctaButtonActionType=GMBCTAButtonActionType.CALL,
+        ctaUrl="tel:+1234567890"
+    ),
+    schedule_at=datetime.now(timezone.utc).isoformat(),
+    is_draft=False
+)
+
+scheduled_gmb_standard = client.create_scheduled_posts(payload_gmb_standard)
+print("Scheduled Standard GMB Post:", scheduled_gmb_standard)
+```
+
+This creates a **standard** GMB post with a “Call” button that dials the specified phone number.
+
+---
+
+### Example: GMB Offer Post
+
+Use the `GMBPostTopicType.OFFER` and specify fields for offers (like `offerTitle`, `offerCouponCode`, etc.). You can also add optional CTA buttons (e.g., `BOOK`, `ORDER`, `SHOP`, etc.).
+
+```python
+from datetime import datetime, timezone
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    GMBSettings,
+    GMBPostTopicType,
+    GMBCTAButtonActionType
+)
+
+offer_start = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
+offer_end = datetime(2025, 3, 12, 23, 59, 59, tzinfo=timezone.utc)
+
+payload_gmb_offer = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Get 50% off your purchase this weekend!",
+    channel_ids=["gmb_channel_id"],  # Replace with your GMB channel ID
+    gmb_settings=GMBSettings(
+        postTopicType=GMBPostTopicType.OFFER,
+        offerTitle="50% OFF Weekend Special",
+        offerCouponCode="WEEKEND50",
+        offerRedeemOnlineUrl="https://example.com/discount",
+        offerTermsConditions="Limited time offer. One per customer.",
+        offerStartDt=offer_start,
+        offerEndDt=offer_end,
+        ctaButtonActionType=GMBCTAButtonActionType.SHOP,
+        ctaUrl="https://example.com/shop"
+    ),
+    schedule_at=datetime.now(timezone.utc).isoformat(),
+    is_draft=False
+)
+
+scheduled_gmb_offer = client.create_scheduled_posts(payload_gmb_offer)
+print("Scheduled GMB Offer Post:", scheduled_gmb_offer)
+```
+
+This creates an **offer**-type GMB post, displays the coupon code and offer details, and includes a “Shop” CTA button that links to your e-commerce or landing page.
+
+---
+
+### Example: GMB Event Post
+
+Use the `GMBPostTopicType.EVENT` and provide event details (like `eventTitle`, `eventStartDt`, `eventEndDt`). You can also attach a CTA button.
+
+```python
+from datetime import datetime, timezone
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    GMBSettings,
+    GMBPostTopicType,
+    GMBCTAButtonActionType
+)
+
+event_start = datetime(2025, 4, 15, 9, 0, 0, tzinfo=timezone.utc)
+event_end = datetime(2025, 4, 15, 17, 0, 0, tzinfo=timezone.utc)
+
+payload_gmb_event = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Join our grand opening event!",
+    channel_ids=["gmb_channel_id"],  # Replace with your GMB channel ID
+    gmb_settings=GMBSettings(
+        postTopicType=GMBPostTopicType.EVENT,
+        eventTitle="Grand Opening",
+        eventStartDt=event_start,
+        eventEndDt=event_end,
+        ctaButtonActionType=GMBCTAButtonActionType.LEARN_MORE,
+        ctaUrl="https://example.com/events/grand-opening"
+    ),
+    schedule_at=datetime.now(timezone.utc).isoformat(),
+    is_draft=False
+)
+
+scheduled_gmb_event = client.create_scheduled_posts(payload_gmb_event)
+print("Scheduled GMB Event Post:", scheduled_gmb_event)
+```
+
+This creates an **event**-type GMB post, including start/end times and a link to “Learn More.”
+
+---
+
+## GMB Fields Overview
+
+Below are the main fields in `GMBSettings`. You can customize them based on the type of GMB post you’re creating:
+
+- **`postTopicType`**  
+  - `STANDARD`, `OFFER`, `EVENT`
+
+- **Offer Fields**  
+  - `offerTitle`, `offerCouponCode`, `offerRedeemOnlineUrl`, `offerTermsConditions`, `offerStartDt`, `offerEndDt`
+
+- **Event Fields**  
+  - `eventTitle`, `eventStartDt`, `eventEndDt`
+
+- **CTA Fields**  
+  - `ctaButtonActionType`: Options include `ACTION_TYPE_UNSPECIFIED`, `BOOK`, `ORDER`, `SHOP`, `LEARN_MORE`, `SIGN_UP`, `CALL`.  
+  - `ctaUrl`: Link for your CTA button (e.g., phone number, booking page, website).
+
+> **Note:** The Google Business Profile (formerly Google My Business) API imposes specific rules on how offers, events, and standard posts are displayed. Make sure to follow Google’s [Business Profile Posting Guidelines](https://support.google.com/business/answer/10394711) for compliance and best practices.
 
 ---
 

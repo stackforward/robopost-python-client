@@ -15,7 +15,7 @@ setup(
     author='Robopost',
     author_email='support@robopost.app',
     url='',
-    packages=['robopost_client', 'robopost_sdk'],
+    packages=['robopost_client'],
     install_requires=['requests==2.32.3', 'urllib3==2.2.3', 'pydantic==2.10.3'],
     entry_points={
         'console_scripts': [
