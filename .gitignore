@@ -5,3 +5,4 @@ pkg_content
 dist
 *.egg-info
 .idea/
+build/

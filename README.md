@@ -1,4 +1,4 @@
-# Robopost Client
+# Robopost Python Client
 
 **Robopost** is an AI-driven social media management platform that consolidates all your social channels into one place. It helps businesses, agencies, and freelancers automate and schedule posts, generate AI-based content, and streamline teamwork. For more information, visit [robopost.app](https://robopost.app/).
 
