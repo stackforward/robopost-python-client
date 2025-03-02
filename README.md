@@ -42,7 +42,7 @@ media = client.upload_media("path/to/your/file.jpg")
 print("Uploaded Media:", media)
 ```
 
-> After uploading a file, **note the `storage_object_id`** in the returned `PublicAPIMediaRead` object. You will use this value as either the **`video_object_id`** or one of the **`image_object_ids`** in your scheduled posts.
+> After uploading a file, **note the `storage_object_id`** in the returned `PublicAPIMediaRead` object. You will use this value as either the **`video_object_id`** (if applicable) or one of the **`image_object_ids`** in your scheduled posts.
 
 ### 3. Finding Channel IDs
 
@@ -177,8 +177,8 @@ payload_weekly_slots = PublicAPIScheduledPostCreateHTTPPayload(
     is_recur=True,                 # Enable recurrence
     recur_interval=AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS,
     recur_interval_time_slots=[
-        datetime(2025, 3, 3, 10, 0, 0, tzinfo=timezone.utc).isoformat(),  # Example: Monday or Tuesday at 10:00 UTC
-        datetime(2025, 3, 5, 14, 0, 0, tzinfo=timezone.utc).isoformat()   # Example: Wednesday or Thursday at 14:00 UTC
+        datetime(2025, 3, 3, 10, 0, 0, tzinfo=timezone.utc).isoformat(),  # Example: Monday/Tuesday at 10:00 UTC
+        datetime(2025, 3, 5, 14, 0, 0, tzinfo=timezone.utc).isoformat()   # Example: Wednesday/Thursday at 14:00 UTC
     ]
 )
 
@@ -249,11 +249,13 @@ scheduled_posts_video = client.create_scheduled_posts(payload_with_video)
 print("Post with Video:", scheduled_posts_video)
 ```
 
+> **Note:** Even though the examples above reference `video_object_id` for video posts, the **videoObject** field has been removed from the TikTok and YouTube models. Video uploads remain available for posts that support videos.
+
 ---
 
 ### 5. Specifying Social Media–Specific Settings
 
-Robopost supports additional fields that allow you to customize posts for each social media platform. These fields can be found in the following Pydantic models:
+Robopost supports additional fields that allow you to customize posts for each social media platform. These fields are defined by the following models:
 
 - **`FacebookSettings`**  
   - `postType` → `FacebookPostType.POST` or `FacebookPostType.REELS`  
@@ -264,13 +266,13 @@ Robopost supports additional fields that allow you to customize posts for each s
 - **`WordpressSettings`**  
   - `postTitle`, `postText`, `postSlug`, `postType`, `postCategories`, `postTags`, etc.  
 - **`YoutubeSettings`**  
-  - `videoObject`, `videoTitle`, `videoType`, `videoDescription`, `videoPrivacyStatus`, etc.  
+  - `videoTitle`, `videoType`, `videoDescription`, `videoPrivacyStatus`, etc. *(Note: **videoObject** has been removed)*  
 - **`TikTokSettings`**  
-  - `title`, `privacyLevel`, `disableDuet`, `disableComment`, etc.  
+  - `title`, `privacyLevel`, `disableDuet`, `disableComment`, etc. *(Note: **videoObject** has been removed)*  
 - **`GMBSettings`**  
   - `postTopicType` (STANDARD, OFFER, EVENT), `offerTitle`, `eventTitle`, `ctaButtonActionType`, etc.
 
-Each of these settings objects is optional. If you do not provide them, the fields default to safe values (e.g., `POST` type for Facebook and Instagram). However, if you want to post Facebook Reels or Instagram Stories, or if you need to specify additional fields for WordPress or GMB, you can do so by providing the respective settings object in your payload.
+Each of these settings objects is optional. If you do not provide them, the fields default to safe values (e.g., `POST` type for Facebook and Instagram). However, if you want to post Facebook Reels or Instagram Stories, or if you need to specify additional fields for WordPress, Pinterest, or GMB, you can do so by providing the respective settings object in your payload.
 
 #### Example: Using **Facebook Reels** and **Instagram Reels**
 
@@ -334,7 +336,6 @@ payload_youtube = PublicAPIScheduledPostCreateHTTPPayload(
     text="My new YouTube short!",
     channel_ids=["youtube_channel_id"],
     youtube_settings=YoutubeSettings(
-        videoObject="SOME_VIDEO_OBJECT_ID",
         videoTitle="Behind the Scenes",
         videoType=YoutubeVideoType.SHORT,  # or VIDEO
         videoDescription="A fun behind-the-scenes short video.",
@@ -346,6 +347,31 @@ scheduled_youtube = client.create_scheduled_posts(payload_youtube)
 print("YouTube Short Scheduled:", scheduled_youtube)
 ```
 
+#### Example: Creating a **Pinterest** Post
+
+The **PinterestSettings** model allows you to specify a title and destination link for your Pin. Use this example to create a Pinterest post.
+
+```python
+from robopost_client import (
+    PublicAPIScheduledPostCreateHTTPPayload,
+    PinterestSettings
+)
+
+payload_pinterest = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Check out my latest Pin!",
+    channel_ids=["pinterest_channel_id"],
+    pinterest_settings=PinterestSettings(
+        pinTitle="My Awesome Pin",
+        destinationLink="https://example.com/my-awesome-pin"
+    ),
+    is_draft=False
+)
+
+scheduled_pinterest = client.create_scheduled_posts(payload_pinterest)
+print("Pinterest Post Scheduled:", scheduled_pinterest)
+```
+
+---
 
 ### Example: Standard GMB Post
 
@@ -418,7 +444,7 @@ scheduled_gmb_offer = client.create_scheduled_posts(payload_gmb_offer)
 print("Scheduled GMB Offer Post:", scheduled_gmb_offer)
 ```
 
-This creates an **offer**-type GMB post, displays the coupon code and offer details, and includes a “Shop” CTA button that links to your e-commerce or landing page.
+This creates an **offer**-type GMB post, displaying the coupon code and offer details, and includes a “Shop” CTA button that links to your e-commerce or landing page.
 
 ---
 

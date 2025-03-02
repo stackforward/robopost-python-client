@@ -110,7 +110,6 @@ class WordpressSettings(BaseModel):
     postParentPage: int = 0
 
 class YoutubeSettings(BaseModel):
-    videoObject: Optional[str] = None
     videoTitle: str = ""
     videoType: YoutubeVideoType = Field(default=YoutubeVideoType.VIDEO)
     videoDescription: str = ""
@@ -125,7 +124,6 @@ class TikTokSettings(BaseModel):
     disableComment: bool = False
     disableStitch: bool = False
     videoCoverTimestampMs: int = 0
-    videoObject: Optional[str] = None
     videoThumbnailGroupUuid: Optional[str] = None
     autoAddMusic: bool = True
 
@@ -224,7 +222,7 @@ class RobopostClient:
     with every request.
     """
 
-    def __init__(self, apikey: str, base_url: str = "https://public-api.robopost.app"):
+    def __init__(self, apikey: str, base_url: str = "https://public-api.robopost.app/v1"):
         self.apikey = apikey
         self.base_url = base_url
 
@@ -243,7 +241,7 @@ class RobopostClient:
             response = requests.post(url, params=params, files=files)
 
         response.raise_for_status()
-        return PublicAPIMediaRead.model_validate(response.json())
+        return PublicAPIMediaRead(**response.json())
 
     def create_scheduled_posts(
         self,
@@ -265,4 +263,4 @@ class RobopostClient:
         response.raise_for_status()
 
         data = response.json()
-        return [PublicAPIScheduledPostRead.model_validate(item) for item in data]
+        return [PublicAPIScheduledPostRead(**item) for item in data]
