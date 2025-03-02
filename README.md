@@ -15,7 +15,7 @@ This **Robopost Client** library provides convenient Python methods to:
 Install the required dependencies using pip:
 
 ```bash
-pip install robopost-client
+pip install git+https://github.com/stackforward/robopost-python-client.git
 ```
 
 ---
