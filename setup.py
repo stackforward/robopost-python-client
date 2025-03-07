@@ -8,7 +8,7 @@ with open('README.md') as f:
 
 setup(
     name='robopost-client',
-    version='0.0.1',
+    version='0.0.2',
     description='Robopost Client',
     long_description=readme,
     license='MIT',

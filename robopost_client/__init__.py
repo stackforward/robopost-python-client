@@ -145,13 +145,21 @@ class GMBSettings(BaseModel):
 # Models for Scheduled Posts
 # ---------------------------------------------------------
 class PublicAPIScheduledPostCreateHTTPPayload(BaseModel):
+    """
+    Represents the payload for creating a scheduled post via the Public API.
+    Includes optional lists of URLs (image_urls, video_url, gif_url) which the
+    server can handle (uploading to UploadCare, etc.) before assigning final
+    object_ids.
+    """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias="_id")
     text: str = Field("")
     channel_ids: List[str] = Field(default_factory=list)
     image_object_ids: List[str] = Field(default_factory=list)
     video_object_id: Optional[str] = Field(None)
     gif_object_id: Optional[str] = Field(None)
-
+    image_urls: List[str] = Field(default_factory=list)
+    video_url: Optional[str] = Field(None)
+    gif_url: Optional[str] = Field(None)
     facebook_settings: FacebookSettings = Field(default_factory=FacebookSettings)
     instagram_settings: InstagramSettings = Field(default_factory=InstagramSettings)
     pinterest_settings: PinterestSettings = Field(default_factory=PinterestSettings)
@@ -159,7 +167,6 @@ class PublicAPIScheduledPostCreateHTTPPayload(BaseModel):
     youtube_settings: YoutubeSettings = Field(default_factory=YoutubeSettings)
     tiktok_settings: TikTokSettings = Field(default_factory=TikTokSettings)
     gmb_settings: GMBSettings = Field(default_factory=GMBSettings)
-
     is_draft: bool = Field(False)
     post_collection_id: Optional[str] = Field(None)
     schedule_at: datetime = Field(default_factory=datetime.now)
@@ -256,9 +263,16 @@ class RobopostClient:
         url = f"{self.base_url}/scheduled_posts/"
         params = {"apikey": self.apikey}
 
+        # Convert payload to JSON. If you prefer .dict(), that also works:
         json_data = payload.model_dump_json()
+
         print(f"sending payload: {json_data}")
-        response = requests.post(url, params=params, data=json_data, headers={"Content-Type": "application/json"})
+        response = requests.post(
+            url,
+            params=params,
+            data=json_data,
+            headers={"Content-Type": "application/json"}
+        )
         print(f"response: {response.text}")
         response.raise_for_status()
 
