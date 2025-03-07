@@ -35,7 +35,7 @@ client = RobopostClient(apikey="YOUR_API_KEY")
 
 ### 2. Uploading Media
 
-Use the `upload_media` method to upload an image or video. Simply pass the local file path to the file you want to upload; the API key is included automatically as a query parameter.
+Use the `upload_media` method to upload an image or video **from a local file**. Simply pass the local file path; the API key is included automatically as a query parameter.
 
 ```python
 media = client.upload_media("path/to/your/file.jpg")
@@ -60,7 +60,7 @@ All scheduled times must be in UTC. Build a payload using the `PublicAPISchedule
 
 **Important:**  
 - The `schedule_at` field is required (with a default of the current UTC time).  
-- When scheduling a recurring post (i.e. `is_recur=True`), you **must** also pass a valid `recur_interval` along with the recurrence fields.  
+- When scheduling a recurring post (i.e., `is_recur=True`), you **must** also pass a valid `recur_interval` along with the recurrence fields.  
 - For recurrence using either `DAILY_SPECIFIC_TIME_SLOTS` or `WEEKLY_SPECIFIC_TIME_SLOTS`, you must fill the `recur_interval_time_slots` field with full ISO 8601 datetime strings.  
   - When using `DAILY_SPECIFIC_TIME_SLOTS`, only the time portion will be used by the API.
   - When using `WEEKLY_SPECIFIC_TIME_SLOTS`, both the day of the week and time are taken into account.
@@ -177,8 +177,8 @@ payload_weekly_slots = PublicAPIScheduledPostCreateHTTPPayload(
     is_recur=True,                 # Enable recurrence
     recur_interval=AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS,
     recur_interval_time_slots=[
-        datetime(2025, 3, 3, 10, 0, 0, tzinfo=timezone.utc).isoformat(),  # Example: Monday/Tuesday at 10:00 UTC
-        datetime(2025, 3, 5, 14, 0, 0, tzinfo=timezone.utc).isoformat()   # Example: Wednesday/Thursday at 14:00 UTC
+        datetime(2025, 3, 3, 10, 0, 0, tzinfo=timezone.utc).isoformat(),
+        datetime(2025, 3, 5, 14, 0, 0, tzinfo=timezone.utc).isoformat()
     ]
 )
 
@@ -188,7 +188,7 @@ print("Recurring Posts (Weekly Specific Slots):", scheduled_posts_weekly)
 
 ---
 
-#### F. Create a Post With **3 Images**
+#### F. Create a Post With **3 Images** (Using Uploaded `storage_object_id`)
 
 **Step 1: Upload the images (one by one) and collect their `storage_object_id`.**
 
@@ -224,7 +224,7 @@ print("Post with Images:", scheduled_posts_images)
 
 ---
 
-#### G. Create a Post With **1 Video**
+#### G. Create a Post With **1 Video** (Using Uploaded `storage_object_id`)
 
 **Step 1: Upload a video and retrieve its `storage_object_id`.**
 
@@ -250,6 +250,50 @@ print("Post with Video:", scheduled_posts_video)
 ```
 
 > **Note:** Even though the examples above reference `video_object_id` for video posts, the **videoObject** field has been removed from the TikTok and YouTube models. Video uploads remain available for posts that support videos.
+
+---
+
+#### H. Creating a Post With **Direct URLs** (Images, GIF, or Video)
+
+Instead of uploading media first (using `upload_media`), you can **directly** specify URLs for images, GIFs, or videos in the post payload. The Robopost API will automatically:
+
+1. Download the file from your provided URL  
+2. Upload it to its storage backend (e.g., UploadCare)  
+3. Convert/optimize the media if needed  
+
+You do **not** need to store any additional IDs. Just provide one of these fields:
+
+- **`image_urls`** (list of image URLs)
+- **`gif_url`** (single URL for a GIF)
+- **`video_url`** (single URL for a video)
+
+**Example:**
+
+```python
+from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
+
+payload_with_direct_urls = PublicAPIScheduledPostCreateHTTPPayload(
+    text="No local upload needed—direct URLs!",
+    channel_ids=["channel_123"],  # Replace with your channel ID
+    image_urls=[
+        "https://example.com/images/dog.jpg",
+        "https://example.com/images/cat.jpg"
+    ],
+    gif_url="https://example.com/animations/funny.gif",
+    video_url="https://example.com/videos/demo.mp4",
+    is_draft=False
+)
+
+scheduled_posts_direct_urls = client.create_scheduled_posts(payload_with_direct_urls)
+print("Scheduled Post With Direct URLs:", scheduled_posts_direct_urls)
+```
+
+You can mix and match:
+- **`image_urls`** + `gif_url`  
+- **`image_urls`** + `video_url`  
+- Or just one of them  
+
+The server will handle downloading and uploading behind the scenes. If you provide both a `video_url` and `video_object_id`, the URL-based approach takes precedence and your `video_object_id` is ignored.
 
 ---
 
@@ -408,7 +452,7 @@ This creates a **standard** GMB post with a “Call” button that dials the spe
 
 ### Example: GMB Offer Post
 
-Use the `GMBPostTopicType.OFFER` and specify fields for offers (like `offerTitle`, `offerCouponCode`, etc.). You can also add optional CTA buttons (e.g., `BOOK`, `ORDER`, `SHOP`, etc.).
+Use the `GMBPostTopicType.OFFER` and specify fields for offers (like `offerTitle`, `offerCouponCode`, etc.). You can also add optional CTA buttons.
 
 ```python
 from datetime import datetime, timezone
@@ -443,8 +487,6 @@ payload_gmb_offer = PublicAPIScheduledPostCreateHTTPPayload(
 scheduled_gmb_offer = client.create_scheduled_posts(payload_gmb_offer)
 print("Scheduled GMB Offer Post:", scheduled_gmb_offer)
 ```
-
-This creates an **offer**-type GMB post, displaying the coupon code and offer details, and includes a “Shop” CTA button that links to your e-commerce or landing page.
 
 ---
 
