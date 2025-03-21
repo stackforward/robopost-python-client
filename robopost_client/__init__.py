@@ -277,4 +277,4 @@ class RobopostClient:
         response.raise_for_status()
 
         data = response.json()
-        return [PublicAPIScheduledPostRead(**item) for item in data]
+        return [PublicAPIScheduledPostRead(**item) for item in data["scheduled_posts"]]
