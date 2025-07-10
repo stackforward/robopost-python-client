@@ -3,8 +3,9 @@
 **Robopost** is an AI-driven social media management platform that consolidates all your social channels into one place. It helps businesses, agencies, and freelancers automate and schedule posts, generate AI-based content, and streamline teamwork. For more information, visit [robopost.app](https://robopost.app/).
 
 This **Robopost Client** library provides convenient Python methods to:
-- **Upload Media** (images or videos)
-- **Create Scheduled Posts** (including drafts and recurring posts)
+- **Manage Media:** Upload, list, get, and delete images or videos.
+- **Schedule Posts:** Create simple, recurring, and AI-enhanced posts.
+- **Generate AI Videos:** Create and manage automated faceless video series for platforms like TikTok, Reels, and Shorts.
 
 > **Note:** All date/time fields must be provided in **UTC**.
 
@@ -12,7 +13,7 @@ This **Robopost Client** library provides convenient Python methods to:
 
 ## Installation
 
-Install the required dependencies using pip:
+Install the library directly from GitHub:
 
 ```bash
 pip install git+https://github.com/stackforward/robopost-python-client.git
@@ -20,11 +21,11 @@ pip install git+https://github.com/stackforward/robopost-python-client.git
 
 ---
 
-## Usage
+## Getting Started
 
 ### 1. Initializing the Client
 
-Instantiate the `RobopostClient` by providing your API key. You can also optionally override the default base URL.
+Instantiate the `RobopostClient` by providing your API key. You can find your API key in the Robopost dashboard.
 
 ```python
 from robopost_client import RobopostClient
@@ -33,520 +34,315 @@ from robopost_client import RobopostClient
 client = RobopostClient(apikey="YOUR_API_KEY")
 ```
 
-### 2. Uploading Media
+### 2. Finding Channel IDs
 
-Use the `upload_media` method to upload an image or video **from a local file**. Simply pass the local file path; the API key is included automatically as a query parameter.
+To specify which channels to post to, you’ll need their unique IDs. In the **Robopost dashboard**:
+
+1.  Go to the **Channels** page.
+2.  Click on a channel to view its details.
+3.  Click **Copy ID** to get the channel’s identifier.
+
+---
+
+## Core Features
+
+### 1. Media Management
+
+You can manage your media assets by uploading, listing, retrieving, and deleting them.
+
+#### A. Upload Media
+
+Use `upload_media` to upload an image or video from a local file. The returned `storage_object_id` is used to attach the media to a post.
 
 ```python
 media = client.upload_media("path/to/your/file.jpg")
-print("Uploaded Media:", media)
+print(f"Uploaded Media ID: {media.id}, Storage Object ID: {media.storage_object_id}")
 ```
 
-> After uploading a file, **note the `storage_object_id`** in the returned `PublicAPIMediaRead` object. You will use this value as either the **`video_object_id`** (if applicable) or one of the **`image_object_ids`** in your scheduled posts.
+#### B. List, Get, and Delete Media
 
-### 3. Finding Channel IDs
+Manage your existing media library with these methods.
 
-To specify the `channel_ids` for your posts, you’ll need the IDs of each channel. In the **Robopost dashboard**:
+```python
+# List the first 10 media items
+media_list = client.list_media(limit=10)
+print(f"Found {len(media_list)} media items.")
 
-1. Go to **Channels**  
-2. Click on a specific channel to view its details  
-3. Click **Copy ID** to get the channel’s unique identifier  
+if media_list:
+    media_id_to_manage = media_list[0].id
 
-Use these channel IDs in the `channel_ids` list when creating scheduled posts.
+    # Get a specific media item by its ID
+    specific_media = client.get_media(media_id_to_manage)
+    print("Retrieved media:", specific_media)
 
-### 4. Creating Scheduled Posts
-
-All scheduled times must be in UTC. Build a payload using the `PublicAPIScheduledPostCreateHTTPPayload` Pydantic model, then pass that payload to `create_scheduled_posts`.
-
-**Important:**  
-- The `schedule_at` field is required (with a default of the current UTC time).  
-- When scheduling a recurring post (i.e., `is_recur=True`), you **must** also pass a valid `recur_interval` along with the recurrence fields.  
-- For recurrence using either `DAILY_SPECIFIC_TIME_SLOTS` or `WEEKLY_SPECIFIC_TIME_SLOTS`, you must fill the `recur_interval_time_slots` field with full ISO 8601 datetime strings.  
-  - When using `DAILY_SPECIFIC_TIME_SLOTS`, only the time portion will be used by the API.
-  - When using `WEEKLY_SPECIFIC_TIME_SLOTS`, both the day of the week and time are taken into account.
-
-Below are a few common scenarios:
+    # Delete a media item
+    delete_response = client.delete_media(media_id_to_manage)
+    print("Delete response:", delete_response)
+```
 
 ---
 
-#### A. Create a Post to Be Scheduled **Now**
+### 2. Scheduled Posts
 
-*(This example uses the default value for `schedule_at`, which is the current UTC datetime.)*
+Create and schedule content for your social channels.
+
+#### A. Create a Simple Post
+
+To post immediately, simply provide the text and channel IDs.
 
 ```python
 from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
-# No need to explicitly set schedule_at if posting now since it defaults to datetime.now()
-payload_now = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Posting now via Robopost!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
-    is_draft=False
-)
 
-scheduled_post_now = client.create_scheduled_posts(payload_now)
-print("Scheduled Immediately:", scheduled_post_now)
+payload_now = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Posting now via the Robopost API!",
+    channel_ids=["channel_123"],  # Replace with your channel ID
+)
+scheduled_post = client.create_scheduled_posts(payload_now)
+print("Scheduled Immediately:", scheduled_post)
 ```
 
----
+#### B. Schedule a Post for Later
 
-#### B. Create a Post to Be Scheduled **Later**
-
-*(Explicitly set `schedule_at` to a future UTC datetime.)*
+Set `schedule_at` to a future UTC datetime string.
 
 ```python
 from datetime import datetime, timedelta, timezone
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
 
-# Schedule for 2 hours later in UTC
-future_time = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+future_time = datetime.now(timezone.utc) + timedelta(hours=2)
 payload_later = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Scheduled for later via Robopost!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
+    text="This post is scheduled for later!",
+    channel_ids=["channel_123"],
     schedule_at=future_time,
-    is_draft=False
 )
-
 scheduled_post_later = client.create_scheduled_posts(payload_later)
 print("Scheduled for Later:", scheduled_post_later)
 ```
 
----
+#### C. Create a Post with Media
 
-#### C. Create a **Recurring** Post (Standard)
-
-When using recurring posts, set `is_recur=True` and provide a valid `recur_interval`. In this example, we use a standard DAILY interval.
+Attach previously uploaded media using `image_object_ids` or `video_object_id`. Alternatively, provide direct `image_urls`, a `video_url`, or a `gif_url`, and Robopost will handle the download and processing.
 
 ```python
-from datetime import datetime, timezone
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload, AutomationRecurInterval
+# Example using a direct image URL
+payload_with_media = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Check out this image from a URL!",
+    channel_ids=["channel_123"],
+    image_urls=["https://example.com/images/scenery.jpg"],
+)
+scheduled_post_media = client.create_scheduled_posts(payload_with_media)
+print("Scheduled Post with Media:", scheduled_post_media)
+```
 
-first_post_time = datetime(2025, 3, 1, 10, 0, 0, tzinfo=timezone.utc).isoformat()
+#### D. Create a Recurring Post
+
+Set `is_recur=True` and specify an interval. The `schedule_at` field determines the time of the first post.
+
+```python
+from robopost_client import AutomationRecurInterval
+
+first_post_time = datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
 payload_recur = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Recurring post via Robopost!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
-    schedule_at=first_post_time,   # First run time in UTC
-    is_recur=True,                 # Enable recurrence
-    recur_interval=AutomationRecurInterval.DAILY,  # Standard daily recurrence
+    text="This is a daily recurring post!",
+    channel_ids=["channel_123"],
+    schedule_at=first_post_time,
+    is_recur=True,
+    recur_interval=AutomationRecurInterval.DAILY,
 )
-
 scheduled_posts_recur = client.create_scheduled_posts(payload_recur)
-print("Recurring Posts (Standard):", scheduled_posts_recur)
+print("Recurring Post Scheduled:", scheduled_posts_recur)
 ```
 
----
+#### E. Advanced Recurring Posts (with AI)
 
-#### D. Create a **Recurring** Post Using DAILY_SPECIFIC_TIME_SLOTS
-
-When using `DAILY_SPECIFIC_TIME_SLOTS`, set `is_recur=True`, use `AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS`, and provide a list of ISO 8601 datetime strings in `recur_interval_time_slots`. Note that the API will only use the time portion.
+Enhance recurring posts with AI-generated content. For each recurrence, Robopost can rephrase the text and/or generate a new image. You can also set an end date.
 
 ```python
-from datetime import datetime, timezone
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload, AutomationRecurInterval
+from robopost_client import PostAIGenerateVoiceTone, AIImageModel
 
-first_post_time = datetime(2025, 3, 1, 8, 0, 0, tzinfo=timezone.utc).isoformat()
-payload_daily_slots = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Recurring post with daily specific time slots!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
-    schedule_at=first_post_time,   # First run time in UTC
-    is_recur=True,                 # Enable recurrence
-    recur_interval=AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS,
-    recur_interval_time_slots=[
-        datetime(2025, 3, 1, 9, 0, 0, tzinfo=timezone.utc).isoformat(),
-        datetime(2025, 3, 1, 15, 0, 0, tzinfo=timezone.utc).isoformat()
-    ]
+payload_advanced_recur = PublicAPIScheduledPostCreateHTTPPayload(
+    text="This is a recurring post with AI enhancements! #AI #automation",
+    channel_ids=["channel_123"],
+    schedule_at=first_post_time,
+    is_recur=True,
+    recur_interval=AutomationRecurInterval.DAILY,
+    
+    # Re-phrase the text with a 'witty' tone for each new post
+    recur_rephrase_text_with_ai=True,
+    recur_rephrase_text_with_ai_tone=PostAIGenerateVoiceTone.WITTY,
+    
+    # Generate a new DALL-E image for each new post
+    recur_generate_new_ai_image=True,
+    recur_generate_new_ai_image_model=AIImageModel.DALLE,
+    
+    # Stop the recurrence after a specific date
+    recur_until_dt_enabled=True,
+    recur_until_dt=datetime(2025, 2, 1, 0, 0, 0, tzinfo=timezone.utc),
+    
+    # Optionally, add this post to a collection
+    post_collection_id="collection_abc"
 )
-
-scheduled_posts_daily = client.create_scheduled_posts(payload_daily_slots)
-print("Recurring Posts (Daily Specific Slots):", scheduled_posts_daily)
+scheduled_advanced_recur = client.create_scheduled_posts(payload_advanced_recur)
+print("Advanced Recurring Post Scheduled:", scheduled_advanced_recur)
 ```
 
----
+#### F. Platform-Specific Settings
 
-#### E. Create a **Recurring** Post Using WEEKLY_SPECIFIC_TIME_SLOTS
+Customize posts for each social media platform by providing a settings object in the payload.
 
-For `WEEKLY_SPECIFIC_TIME_SLOTS`, set `is_recur=True`, use `AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS`, and provide a list of ISO 8601 datetime strings in `recur_interval_time_slots`. In this case, the API considers both the day of the week and time.
-
-```python
-from datetime import datetime, timezone
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload, AutomationRecurInterval
-
-first_post_time = datetime(2025, 3, 1, 10, 0, 0, tzinfo=timezone.utc).isoformat()
-payload_weekly_slots = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Recurring post with weekly specific time slots!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
-    schedule_at=first_post_time,   # First run time in UTC
-    is_recur=True,                 # Enable recurrence
-    recur_interval=AutomationRecurInterval.WEEKLY_SPECIFIC_TIME_SLOTS,
-    recur_interval_time_slots=[
-        datetime(2025, 3, 3, 10, 0, 0, tzinfo=timezone.utc).isoformat(),
-        datetime(2025, 3, 5, 14, 0, 0, tzinfo=timezone.utc).isoformat()
-    ]
-)
-
-scheduled_posts_weekly = client.create_scheduled_posts(payload_weekly_slots)
-print("Recurring Posts (Weekly Specific Slots):", scheduled_posts_weekly)
-```
-
----
-
-#### F. Create a Post With **3 Images** (Using Uploaded `storage_object_id`)
-
-**Step 1: Upload the images (one by one) and collect their `storage_object_id`.**
-
-```python
-media_1 = client.upload_media("path/to/image1.jpg")
-media_2 = client.upload_media("path/to/image2.jpg")
-media_3 = client.upload_media("path/to/image3.jpg")
-
-print("Image #1 ID:", media_1.storage_object_id)
-print("Image #2 ID:", media_2.storage_object_id)
-print("Image #3 ID:", media_3.storage_object_id)
-```
-
-**Step 2: Create the scheduled post referencing these IDs.**
-
-```python
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
-
-payload_with_images = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Check out these 3 images!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
-    image_object_ids=[
-        media_1.storage_object_id,
-        media_2.storage_object_id,
-        media_3.storage_object_id,
-    ],
-    is_draft=False
-)
-
-scheduled_posts_images = client.create_scheduled_posts(payload_with_images)
-print("Post with Images:", scheduled_posts_images)
-```
-
----
-
-#### G. Create a Post With **1 Video** (Using Uploaded `storage_object_id`)
-
-**Step 1: Upload a video and retrieve its `storage_object_id`.**
-
-```python
-video_media = client.upload_media("path/to/video.mp4")
-print("Video ID:", video_media.storage_object_id)
-```
-
-**Step 2: Create the scheduled post referencing that video ID.**
-
-```python
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
-
-payload_with_video = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Here's a demo video!",
-    channel_ids=["channel_123"],       # Replace with your channel ID
-    video_object_id=video_media.storage_object_id,
-    is_draft=False
-)
-
-scheduled_posts_video = client.create_scheduled_posts(payload_with_video)
-print("Post with Video:", scheduled_posts_video)
-```
-
-> **Note:** Even though the examples above reference `video_object_id` for video posts, the **videoObject** field has been removed from the TikTok and YouTube models. Video uploads remain available for posts that support videos.
-
----
-
-#### H. Creating a Post With **Direct URLs** (Images, GIF, or Video)
-
-Instead of uploading media first (using `upload_media`), you can **directly** specify URLs for images, GIFs, or videos in the post payload. The Robopost API will automatically:
-
-1. Download the file from your provided URL  
-2. Upload it to its storage backend (e.g., UploadCare)  
-3. Convert/optimize the media if needed  
-
-You do **not** need to store any additional IDs. Just provide one of these fields:
-
-- **`image_urls`** (list of image URLs)
-- **`gif_url`** (single URL for a GIF)
-- **`video_url`** (single URL for a video)
-
-**Example:**
-
-```python
-from robopost_client import PublicAPIScheduledPostCreateHTTPPayload
-
-payload_with_direct_urls = PublicAPIScheduledPostCreateHTTPPayload(
-    text="No local upload needed—direct URLs!",
-    channel_ids=["channel_123"],  # Replace with your channel ID
-    image_urls=[
-        "https://example.com/images/dog.jpg",
-        "https://example.com/images/cat.jpg"
-    ],
-    gif_url="https://example.com/animations/funny.gif",
-    video_url="https://example.com/videos/demo.mp4",
-    is_draft=False
-)
-
-scheduled_posts_direct_urls = client.create_scheduled_posts(payload_with_direct_urls)
-print("Scheduled Post With Direct URLs:", scheduled_posts_direct_urls)
-```
-
-You can mix and match:
-- **`image_urls`** + `gif_url`  
-- **`image_urls`** + `video_url`  
-- Or just one of them  
-
-The server will handle downloading and uploading behind the scenes. If you provide both a `video_url` and `video_object_id`, the URL-based approach takes precedence and your `video_object_id` is ignored.
-
----
-
-### 5. Specifying Social Media–Specific Settings
-
-Robopost supports additional fields that allow you to customize posts for each social media platform. These fields are defined by the following models:
-
-- **`FacebookSettings`**  
-  - `postType` → `FacebookPostType.POST` or `FacebookPostType.REELS`  
-- **`InstagramSettings`**  
-  - `postType` → `InstagramPostType.POST`, `InstagramPostType.REELS`, or `InstagramPostType.STORIES`  
-- **`PinterestSettings`**  
-  - `pinTitle`, `destinationLink`  
-- **`WordpressSettings`**  
-  - `postTitle`, `postText`, `postSlug`, `postType`, `postCategories`, `postTags`, etc.  
-- **`YoutubeSettings`**  
-  - `videoTitle`, `videoType`, `videoDescription`, `videoPrivacyStatus`, etc. *(Note: **videoObject** has been removed)*  
-- **`TikTokSettings`**  
-  - `title`, `privacyLevel`, `disableDuet`, `disableComment`, etc. *(Note: **videoObject** has been removed)*  
-- **`GMBSettings`**  
-  - `postTopicType` (STANDARD, OFFER, EVENT), `offerTitle`, `eventTitle`, `ctaButtonActionType`, etc.
-
-Each of these settings objects is optional. If you do not provide them, the fields default to safe values (e.g., `POST` type for Facebook and Instagram). However, if you want to post Facebook Reels or Instagram Stories, or if you need to specify additional fields for WordPress, Pinterest, or GMB, you can do so by providing the respective settings object in your payload.
-
-#### Example: Using **Facebook Reels** and **Instagram Reels**
+**Example: Schedule an Instagram Reel and a YouTube Short**
 
 ```python
 from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    FacebookSettings,
-    FacebookPostType,
-    InstagramSettings,
-    InstagramPostType
+    InstagramSettings, InstagramPostType,
+    YoutubeSettings, YoutubeVideoType, YoutubePrivacyStatus
 )
 
-payload_social_settings = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Testing Reels on Facebook and Instagram!",
-    channel_ids=["facebook_channel_id", "instagram_channel_id"],
-    facebook_settings=FacebookSettings(postType=FacebookPostType.REELS),
+# Assume you have a video's storage_object_id from uploading it
+video_id = "your_video_storage_object_id"
+
+payload_reels = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Check out my new short-form video! #reel #short",
+    channel_ids=["instagram_channel_id", "youtube_channel_id"],
+    video_object_id=video_id,
+    
     instagram_settings=InstagramSettings(postType=InstagramPostType.REELS),
-)
-
-scheduled_reels = client.create_scheduled_posts(payload_social_settings)
-print("Scheduled Facebook & Instagram Reels:", scheduled_reels)
-```
-
-#### Example: Adding Additional **Wordpress** Fields
-
-```python
-from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    WordpressSettings,
-    WordpressPostType
-)
-
-payload_wordpress = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Check out my WordPress post!",
-    channel_ids=["wordpress_channel_id"],
-    wordpress_settings=WordpressSettings(
-        postTitle="My Awesome Post",
-        postText="Detailed blog content goes here...",
-        postSlug="my-awesome-post",
-        postType=WordpressPostType.POST,
-        postCategories=["Tech", "Python"],
-        postTags=["robopost", "automation"]
-    ),
-)
-
-scheduled_wordpress = client.create_scheduled_posts(payload_wordpress)
-print("WordPress Post Scheduled:", scheduled_wordpress)
-```
-
-#### Example: Setting **YouTube** Privacy and Video Type
-
-```python
-from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    YoutubeSettings,
-    YoutubeVideoType,
-    YoutubePrivacyStatus
-)
-
-payload_youtube = PublicAPIScheduledPostCreateHTTPPayload(
-    text="My new YouTube short!",
-    channel_ids=["youtube_channel_id"],
+    
     youtube_settings=YoutubeSettings(
-        videoTitle="Behind the Scenes",
-        videoType=YoutubeVideoType.SHORT,  # or VIDEO
-        videoDescription="A fun behind-the-scenes short video.",
-        videoPrivacyStatus=YoutubePrivacyStatus.UNLISTED
+        videoTitle="My Awesome New Short",
+        videoType=YoutubeVideoType.SHORT,
+        videoDescription="A detailed description for my YouTube Short.",
+        videoPrivacyStatus=YoutubePrivacyStatus.PUBLIC
     ),
 )
-
-scheduled_youtube = client.create_scheduled_posts(payload_youtube)
-print("YouTube Short Scheduled:", scheduled_youtube)
-```
-
-#### Example: Creating a **Pinterest** Post
-
-The **PinterestSettings** model allows you to specify a title and destination link for your Pin. Use this example to create a Pinterest post.
-
-```python
-from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    PinterestSettings
-)
-
-payload_pinterest = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Check out my latest Pin!",
-    channel_ids=["pinterest_channel_id"],
-    pinterest_settings=PinterestSettings(
-        pinTitle="My Awesome Pin",
-        destinationLink="https://example.com/my-awesome-pin"
-    ),
-    is_draft=False
-)
-
-scheduled_pinterest = client.create_scheduled_posts(payload_pinterest)
-print("Pinterest Post Scheduled:", scheduled_pinterest)
+scheduled_reels = client.create_scheduled_posts(payload_reels)
+print("Scheduled Instagram Reel and YouTube Short:", scheduled_reels)
 ```
 
 ---
 
-### Example: Standard GMB Post
+### 3. AI Faceless Video Generation
 
-Use the `GMBPostTopicType.STANDARD` and provide any additional CTA button fields as needed.
+Automate the creation of short-form "faceless" videos. The process involves two steps:
+1.  **Create a Video Series:** A template that defines the content, style, voice, captions, and other properties for your videos.
+2.  **Generate a Video:** Trigger the creation of a new video based on your series template.
+
+#### A. Create a Video Series
+
+Define a template for your videos. You can even make the series recurring to automatically generate and post new videos on a schedule.
 
 ```python
-from datetime import datetime, timezone
 from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    GMBSettings,
-    GMBPostTopicType,
-    GMBCTAButtonActionType
+    PublicAPIGeneratedFacelessVideoSeriesCreate,
+    GeneratedFacelessVideoSeriesContentType,
+    GeneratedFacelessVideoStyle,
+    AIVoice,
+    GeneratedVideoFormat,
+    AutomationRecurInterval
 )
 
-payload_gmb_standard = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Come visit our new store location!",
-    channel_ids=["gmb_channel_id"],  # Replace with your GMB channel ID
-    gmb_settings=GMBSettings(
-        postTopicType=GMBPostTopicType.STANDARD,
-        ctaButtonActionType=GMBCTAButtonActionType.CALL,
-        ctaUrl="tel:+1234567890"
-    ),
-    schedule_at=datetime.now(timezone.utc).isoformat(),
-    is_draft=False
+series_config = PublicAPIScheduledPostCreateHTTPPayload(
+    name="Daily Fun Facts",
+    content_type=GeneratedFacelessVideoSeriesContentType.FUN_FACTS,
+    style=GeneratedFacelessVideoStyle.FANTASY_CONCEPT_ART,
+    voice=AIVoice.ARIA.value,
+    format=GeneratedVideoFormat.PORTRAIT,  # For TikTok/Reels/Shorts
+    max_duration=59,
+    
+    # Automatically create and schedule a post when a video is ready
+    create_scheduled_post=True,
+    channel_ids=["tiktok_channel_123", "instagram_channel_456"],
+    
+    # Make this series generate a new video every day at a specific time
+    is_recur=True,
+    recur_interval=AutomationRecurInterval.DAILY_SPECIFIC_TIME_SLOTS,
+    recur_interval_time_slots=[datetime(2025, 1, 1, 9, 30, 0, tzinfo=timezone.utc).isoformat()],
+    timezone="America/New_York"
 )
 
-scheduled_gmb_standard = client.create_scheduled_posts(payload_gmb_standard)
-print("Scheduled Standard GMB Post:", scheduled_gmb_standard)
+video_series = client.create_video_series(series_config)
+print("Created Video Series:", video_series)
 ```
 
-This creates a **standard** GMB post with a “Call” button that dials the specified phone number.
+#### B. Manually Generate a Video from a Series
+
+If your series is not recurring, or you want to generate an extra video, you can trigger it manually.
+
+```python
+# Manually trigger a video generation for the series we just created
+task = client.generate_video(series_id=video_series.id)
+print("Started video generation task:", task)
+```
+
+#### C. Check Generation Status & Wait for Completion
+
+Video generation is an asynchronous process. You can poll the task status or use the convenient `wait_for_video_completion` helper method.
+
+```python
+try:
+    # This method will poll the API until the task is complete, fails, or times out
+    completed_task = client.wait_for_video_completion(
+        task_id=task.task_id,
+        poll_interval=15,  # Check every 15 seconds
+        timeout=600        # Wait for a maximum of 10 minutes
+    )
+    print(f"Task {completed_task.task_id} finished with status: {completed_task.status}")
+
+    if completed_task.status == "COMPLETE":
+        # Get full details, including the final video URL and any generated text
+        details = client.get_video_task_details(task.task_id)
+        print("Video details:", details)
+
+except TimeoutError as e:
+    print(e)
+```
+
+#### D. Manage Video Series
+
+You can also list, update, and delete your video series.
+
+```python
+# List all video series
+all_series = client.list_video_series()
+print(f"Found {len(all_series)} video series.")
+
+# Update a series (e.g., change the voice)
+from robopost_client import PublicAPIGeneratedFacelessVideoSeriesUpdate, AIVoice
+update_payload = PublicAPIGeneratedFacelessVideoSeriesUpdate(voice=AIVoice.BILL.value)
+updated_series = client.update_video_series(series_id=video_series.id, payload=update_payload)
+print("Updated series voice to:", updated_series.voice)
+
+# Delete a series
+client.delete_video_series(series_id=video_series.id)
+print(f"Series {video_series.id} has been deleted.")
+```
 
 ---
 
-### Example: GMB Offer Post
+## Error Handling
 
-Use the `GMBPostTopicType.OFFER` and specify fields for offers (like `offerTitle`, `offerCouponCode`, etc.). You can also add optional CTA buttons.
+The client raises custom exceptions for API-related errors. It's best practice to wrap your API calls in a `try...except` block to handle potential issues gracefully.
 
-```python
-from datetime import datetime, timezone
-from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    GMBSettings,
-    GMBPostTopicType,
-    GMBCTAButtonActionType
-)
-
-offer_start = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
-offer_end = datetime(2025, 3, 12, 23, 59, 59, tzinfo=timezone.utc)
-
-payload_gmb_offer = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Get 50% off your purchase this weekend!",
-    channel_ids=["gmb_channel_id"],  # Replace with your GMB channel ID
-    gmb_settings=GMBSettings(
-        postTopicType=GMBPostTopicType.OFFER,
-        offerTitle="50% OFF Weekend Special",
-        offerCouponCode="WEEKEND50",
-        offerRedeemOnlineUrl="https://example.com/discount",
-        offerTermsConditions="Limited time offer. One per customer.",
-        offerStartDt=offer_start,
-        offerEndDt=offer_end,
-        ctaButtonActionType=GMBCTAButtonActionType.SHOP,
-        ctaUrl="https://example.com/shop"
-    ),
-    schedule_at=datetime.now(timezone.utc).isoformat(),
-    is_draft=False
-)
-
-scheduled_gmb_offer = client.create_scheduled_posts(payload_gmb_offer)
-print("Scheduled GMB Offer Post:", scheduled_gmb_offer)
-```
-
----
-
-### Example: GMB Event Post
-
-Use the `GMBPostTopicType.EVENT` and provide event details (like `eventTitle`, `eventStartDt`, `eventEndDt`). You can also attach a CTA button.
+- `RobopostPlanLimitError`: Raised when your request exceeds a limit of your current plan (e.g., creating too many posts).
+- `RobopostAPIError`: A general exception for other API errors (e.g., invalid input, authentication failure).
 
 ```python
-from datetime import datetime, timezone
-from robopost_client import (
-    PublicAPIScheduledPostCreateHTTPPayload,
-    GMBSettings,
-    GMBPostTopicType,
-    GMBCTAButtonActionType
-)
+from robopost_client import RobopostAPIError, RobopostPlanLimitError
 
-event_start = datetime(2025, 4, 15, 9, 0, 0, tzinfo=timezone.utc)
-event_end = datetime(2025, 4, 15, 17, 0, 0, tzinfo=timezone.utc)
+try:
+    # An example API call that might fail
+    client.create_scheduled_posts(some_invalid_payload)
 
-payload_gmb_event = PublicAPIScheduledPostCreateHTTPPayload(
-    text="Join our grand opening event!",
-    channel_ids=["gmb_channel_id"],  # Replace with your GMB channel ID
-    gmb_settings=GMBSettings(
-        postTopicType=GMBPostTopicType.EVENT,
-        eventTitle="Grand Opening",
-        eventStartDt=event_start,
-        eventEndDt=event_end,
-        ctaButtonActionType=GMBCTAButtonActionType.LEARN_MORE,
-        ctaUrl="https://example.com/events/grand-opening"
-    ),
-    schedule_at=datetime.now(timezone.utc).isoformat(),
-    is_draft=False
-)
+except RobopostPlanLimitError as e:
+    print(f"Plan limit reached: {e.message}")
+    print(f"Limit: {e.limit}, Current Usage: {e.current_usage}")
 
-scheduled_gmb_event = client.create_scheduled_posts(payload_gmb_event)
-print("Scheduled GMB Event Post:", scheduled_gmb_event)
+except RobopostAPIError as e:
+    print(f"An API error occurred (Status Code: {e.status_code}): {e.message}")
+    print(f"Full response data: {e.response_data}")
+
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
 ```
-
-This creates an **event**-type GMB post, including start/end times and a link to “Learn More.”
-
----
-
-## GMB Fields Overview
-
-Below are the main fields in `GMBSettings`. You can customize them based on the type of GMB post you’re creating:
-
-- **`postTopicType`**  
-  - `STANDARD`, `OFFER`, `EVENT`
-
-- **Offer Fields**  
-  - `offerTitle`, `offerCouponCode`, `offerRedeemOnlineUrl`, `offerTermsConditions`, `offerStartDt`, `offerEndDt`
-
-- **Event Fields**  
-  - `eventTitle`, `eventStartDt`, `eventEndDt`
-
-- **CTA Fields**  
-  - `ctaButtonActionType`: Options include `ACTION_TYPE_UNSPECIFIED`, `BOOK`, `ORDER`, `SHOP`, `LEARN_MORE`, `SIGN_UP`, `CALL`.  
-  - `ctaUrl`: Link for your CTA button (e.g., phone number, booking page, website).
-
-> **Note:** The Google Business Profile (formerly Google My Business) API imposes specific rules on how offers, events, and standard posts are displayed. Make sure to follow Google’s [Business Profile Posting Guidelines](https://support.google.com/business/answer/10394711) for compliance and best practices.
 
 ---
 
