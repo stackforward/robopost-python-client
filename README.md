@@ -36,11 +36,11 @@ client = RobopostClient(apikey="YOUR_API_KEY")
 
 ### 2. Finding Channel IDs
 
-To specify which channels to post to, you’ll need their unique IDs. In the **Robopost dashboard**:
+To specify which channels to post to, you'll need their unique IDs. In the **Robopost dashboard**:
 
 1.  Go to the **Channels** page.
 2.  Click on a channel to view its details.
-3.  Click **Copy ID** to get the channel’s identifier.
+3.  Click **Copy ID** to get the channel's identifier.
 
 ---
 
@@ -133,7 +133,21 @@ scheduled_post_media = client.create_scheduled_posts(payload_with_media)
 print("Scheduled Post with Media:", scheduled_post_media)
 ```
 
-#### D. Create a Recurring Post
+#### D. Create a Post with First Comment
+
+Add a first comment that will be automatically posted after your main post goes live. This is especially useful for adding hashtags or additional context without cluttering the main post.
+
+```python
+payload_with_comment = PublicAPIScheduledPostCreateHTTPPayload(
+    text="Just launched our new product! Can't wait to share more details.",
+    channel_ids=["channel_123"],
+    first_comment="🎉 Use code LAUNCH20 for 20% off! #newproduct #launch #discount #sale",
+)
+scheduled_post_comment = client.create_scheduled_posts(payload_with_comment)
+print("Scheduled Post with First Comment:", scheduled_post_comment)
+```
+
+#### E. Create a Recurring Post
 
 Set `is_recur=True` and specify an interval. The `schedule_at` field determines the time of the first post.
 
@@ -152,7 +166,7 @@ scheduled_posts_recur = client.create_scheduled_posts(payload_recur)
 print("Recurring Post Scheduled:", scheduled_posts_recur)
 ```
 
-#### E. Advanced Recurring Posts (with AI)
+#### F. Advanced Recurring Posts (with AI)
 
 Enhance recurring posts with AI-generated content. For each recurrence, Robopost can rephrase the text and/or generate a new image. You can also set an end date.
 
@@ -185,7 +199,7 @@ scheduled_advanced_recur = client.create_scheduled_posts(payload_advanced_recur)
 print("Advanced Recurring Post Scheduled:", scheduled_advanced_recur)
 ```
 
-#### F. Platform-Specific Settings
+#### G. Platform-Specific Settings
 
 Customize posts for each social media platform by providing a settings object in the payload.
 
@@ -240,7 +254,7 @@ from robopost_client import (
     AutomationRecurInterval
 )
 
-series_config = PublicAPIScheduledPostCreateHTTPPayload(
+series_config = PublicAPIGeneratedFacelessVideoSeriesCreate(
     name="Daily Fun Facts",
     content_type=GeneratedFacelessVideoSeriesContentType.FUN_FACTS,
     style=GeneratedFacelessVideoStyle.FANTASY_CONCEPT_ART,

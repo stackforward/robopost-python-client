@@ -339,7 +339,9 @@ class PublicAPIScheduledPostCreateHTTPPayload(BaseModel):
     recur_until_dt_enabled: bool = Field(False)
     recur_rephrase_text_with_ai: bool = Field(False)
     recur_rephrase_text_with_ai_tone: PostAIGenerateVoiceTone = Field(default=PostAIGenerateVoiceTone.FRIENDLY)
-    recur_interval_time_slots: List[str] = Field(default_factory=list)
+    daily_recur_interval_time_slots: List[str] = Field(default_factory=list)
+    weekly_recur_interval_time_slots: List[str] = Field(default_factory=list)
+    first_comment: str = Field("", description="First comment to add after posting to social media")
 
 
 class PublicAPIScheduledPostRead(BaseModel):
@@ -370,6 +372,7 @@ class PublicAPIScheduledPostRead(BaseModel):
     recur_rephrase_text_with_ai: bool = Field(False)
     recur_rephrase_text_with_ai_tone: PostAIGenerateVoiceTone = Field(default=PostAIGenerateVoiceTone.FRIENDLY)
     recur_interval_time_slots: List[str] = Field(default_factory=list)
+    first_comment: str = Field("", description="First comment to add after posting to social media")
 
 
 # ---------------------------------------------------------
