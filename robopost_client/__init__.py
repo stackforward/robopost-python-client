@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 # Enums
 # ---------------------------------------------------------
 class AIImageModel(Enum):
+    Z_IMAGE = "Z_IMAGE"
     DALLE = "DALLE"
     FLUX_SCHNELL = "FLUX_SCHNELL"
     FLUX_DEV = "FLUX_DEV"
@@ -389,6 +390,10 @@ class PublicAPIGeneratedFacelessVideoSeriesCreate(BaseModel):
         default=GeneratedFacelessVideoStyle.DEFAULT,
         description="Visual style of the videos"
     )
+    ai_image_model: AIImageModel = Field(
+        default=AIImageModel.Z_IMAGE,
+        description="Image generation model for story visuals"
+    )
     voice: str = Field(
         default=AIVoice.ALICE.value,
         description="Voice to use for narration (AI voice name or ElevenLabs voice ID)"
@@ -576,6 +581,7 @@ class PublicAPIGeneratedFacelessVideoSeriesUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     content_type: Optional[GeneratedFacelessVideoSeriesContentType] = None
     style: Optional[GeneratedFacelessVideoStyle] = None
+    ai_image_model: Optional[AIImageModel] = None
     voice: Optional[str] = None
     text_prefix: Optional[str] = Field(None, max_length=5000)
     text_suffix: Optional[str] = Field(None, max_length=5000)
@@ -628,6 +634,7 @@ class PublicAPIGeneratedFacelessVideoSeriesRead(BaseModel):
     name: str = Field(..., description="Name of the video series")
     content_type: GeneratedFacelessVideoSeriesContentType = Field(description="Content type")
     style: GeneratedFacelessVideoStyle = Field(description="Video style")
+    ai_image_model: AIImageModel = Field(description="Image generation model")
     voice: str = Field(description="Voice used for narration")
     text_prefix: str = Field(description="Text prefix")
     text_suffix: str = Field(description="Text suffix")
